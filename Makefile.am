@@ -10,4 +10,4 @@ m4_files = m4/mni_REQUIRE_LIB.m4 m4/mni_REQUIRE_MNILIBS.m4	 \
 	m4/smr_OPTIONAL_LIB.m4 m4/smr_REQUIRED_LIB.m4		 \
 	m4/smr_WITH_BUILD_PATH.m4
 
-mincmorph_SOURCES = fft_support.c mincfft.c fft_support.h
+mincfft_SOURCES = fft_support.c mincfft.c fft_support.h
