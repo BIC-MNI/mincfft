@@ -3,7 +3,7 @@ OBJS = $(PROGS:=.o) fft_support.o
 
 CC=cc
 
-OPTIONS = -O3
+OPTIONS = -g3 -fullwarn -O3
 INCLUDES = -I/usr/local/include
 CFLAGS = $(OPTIONS) $(INCLUDES)
 
