@@ -21,6 +21,8 @@
 /*                              - code to allow reconstruction of FID's      */
 /*                              - Added option of reading in 3D/4D files     */
 /* Thu Aug 29 10:09:07 EST 2002 - Changed options to allow multiple outfiles */
+/* Mon Nov  4 18:04:58 EST 2002 - complex_vector => MIvector_dimension       */
+
 
 #include <float.h>
 #include <volume_io.h>
@@ -47,7 +49,7 @@ int      centre_fft = FALSE;
 int      fft_dim = 3;
 char    *outfiles[MAX_OUTFILES] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
 int      is_signed = FALSE;
-nc_type  dtype = NC_DOUBLE;
+nc_type  dtype = NC_FLOAT;
 
 static ArgvInfo argTable[] = {
    {"-verbose", ARGV_CONSTANT, (char *)TRUE, (char *)&verbose,
@@ -63,9 +65,9 @@ static ArgvInfo argTable[] = {
    {"-long", ARGV_CONSTANT, (char *)NC_LONG, (char *)&dtype,
     "Write out long integer data."},
    {"-float", ARGV_CONSTANT, (char *)NC_FLOAT, (char *)&dtype,
-    "Write out single-precision data."},
+    "Write out single-precision data. (Default)"},
    {"-double", ARGV_CONSTANT, (char *)NC_DOUBLE, (char *)&dtype,
-    "Write out double-precision data. (Default)"},
+    "Write out double-precision data."},
    {"-signed", ARGV_CONSTANT, (char *)TRUE, (char *)&is_signed,
     "Write signed integer data."},
    {"-unsigned", ARGV_CONSTANT, (char *)FALSE, (char *)&is_signed,
@@ -106,7 +108,7 @@ static ArgvInfo argTable[] = {
 };
 
 char    *spac_dimorder[] = { MIzspace, MIyspace, MIxspace };
-char    *freq_dimorder[] = { MIzspace, MIyspace, MIxspace, "complex_vector" };
+char    *freq_dimorder[] = { MIzspace, MIyspace, MIxspace, MIvector_dimension };
 
 main(int argc, char *argv[])
 {
@@ -165,12 +167,12 @@ main(int argc, char *argv[])
    set_default_minc_input_options(&in_ops);
    set_minc_input_vector_to_scalar_flag(&in_ops, FALSE);
    if(in_ndims == 4){
-      status = input_volume(in_fn,
-                            4, freq_dimorder, NC_DOUBLE, FALSE, 0.0, 0.0, TRUE, &data, &in_ops);
+      status = input_volume(in_fn, 4, freq_dimorder,
+                            NC_UNSPECIFIED, FALSE, 0.0, 0.0, TRUE, &data, &in_ops);
       }
    else{
-      status = input_volume(in_fn,
-                            3, spac_dimorder, NC_UNSPECIFIED, FALSE, 0.0, 0.0, TRUE, &tmp, &in_ops);
+      status = input_volume(in_fn, 3, spac_dimorder,
+                            NC_UNSPECIFIED, FALSE, 0.0, 0.0, TRUE, &tmp, &in_ops);
       status &= prep_volume(&tmp, &data);
       delete_volume(tmp);
       }
@@ -185,16 +187,17 @@ main(int argc, char *argv[])
 
       get_volume_real_range(data, &min_value, &max_value);
 
-      fprintf(stdout, "| Input file:     %s\n", in_fn);
-      fprintf(stdout, "| Input ndims:    %d\n", in_ndims);
-      fprintf(stdout, "| min/max:        [%8.3f:%8.3f]\n", min_value, max_value);
-      fprintf(stdout, "| Output files:\n");
+      fprintf(stdout, " | Input file:     %s\n", in_fn);
+      fprintf(stdout, " | Input ndims:    %d\n", in_ndims);
+      fprintf(stdout, " | min/max:        [%8.3f:%8.3f]\n", min_value, max_value);
+      fprintf(stdout, " | Output files:\n");
       for(c = 0; c < MAX_OUTFILES; c++){
          if(outfiles[c] != NULL){
-            fprintf(stdout, "|   [%d]:         %s => %s\n", c, out_names[c], outfiles[c]);
+            fprintf(stdout, " |   [%d]:         %s => %s\n", c, out_names[c],
+                    outfiles[c]);
             }
          }
-      fprintf(stdout, "| FFT order:      %d\n", fft_dim);
+      fprintf(stdout, " | FFT order:      %d\n", fft_dim);
       }
 
    /* FFT the volume */
@@ -223,10 +226,10 @@ main(int argc, char *argv[])
             /* set up max and min values */
             min = DBL_MAX;
             max = -DBL_MAX;
-            for(i = 0; i < sizes[0]; i++){
-               for(j = 0; j < sizes[1]; j++){
-                  for(k = 0; k < sizes[2]; k++){
-                     for(l = 0; l < sizes[3]; l++){
+            for(i = sizes[0]; i--;){
+               for(j = sizes[1]; j--;){
+                  for(k = sizes[2]; k--;){
+                     for(l = sizes[3]; l--;){
 
                         GET_VALUE_4D(value, data, i, j, k, l);
                         if(value > max){
@@ -255,7 +258,8 @@ main(int argc, char *argv[])
             }
 
          if(output_modified_volume(outfiles[c],
-                                    dtype, is_signed, 0, 0, *vol_ptr, in_fn, history, NULL) != OK){
+                                    dtype, is_signed, 0, 0,
+                                    *vol_ptr, in_fn, history, NULL) != OK){
             print_error("Problems outputing: %s", outfiles[c]);
             }
 

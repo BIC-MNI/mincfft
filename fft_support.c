@@ -6,7 +6,12 @@
 @CALLS      : 
 @CREATED    : Fri Nov  5 11:16:54 EST 1993 Louis Collins
 @MODIFIED   : $Log: fft_support.c,v $
-@MODIFIED   : Revision 1.1  2002-09-17 23:44:51  rotor
+@MODIFIED   : Revision 1.2  2002-11-21 01:48:18  rotor
+@MODIFIED   : * Changed complex_vector to MIvector_dimension
+@MODIFIED   : * large reorganisations to the 2D fft calculations
+@MODIFIED   :      to the point that they should be correct now.
+@MODIFIED   :
+@MODIFIED   : Revision 1.1  2002/09/17 23:44:51  rotor
 @MODIFIED   : ----------------------------------------------------------------------
 @MODIFIED   : Initial entry of mincfft to CVS (to perhaps replace louis's old NR
 @MODIFIED   :    version of mincfft
@@ -30,6 +35,10 @@
 #include <fftw.h>
 #include "fft_support.h"
 
+/* function prototypes */
+Status fft_volume_3d(Volume data, int inverse_flg, int centre);
+Status fft_volume_2d(Volume data, int inverse_flg, int centre);
+
 extern char *spac_dimorder[];
 extern char *freq_dimorder[];
 extern int centre_fft;
@@ -39,44 +48,43 @@ Status prep_volume(Volume * in_vol, Volume * out_vol)
    int      i, j, k;
    Real     value;
    progress_struct progress;
+   Real     min, max;
 
    int      sizes[4];
+   Real     starts[4];
    Real     separations[4];
-   Real     world_origin[4];
-   Real     voxel_origin[4] = { 0.0, 0.0, 0.0, 0.0 };
-   Real     v[4];
-   
-   General_transform trans;
+   Real     tmp_dircos[4];
    
    get_volume_sizes(*in_vol, sizes);
+   get_volume_starts(*in_vol, starts);
    get_volume_separations(*in_vol, separations);
-   copy_general_transform(get_voxel_to_world_transform(*in_vol), &trans);
-
+   get_volume_real_range(*in_vol, &min, &max);
+   
    /* setup frequency dimension */
    sizes[3] = 2;
+   starts[3] = 0;
    separations[3] = 1;
    
    /* define new out_vol volume  */
-   *out_vol = create_volume(4, freq_dimorder, NC_DOUBLE, TRUE, 0.0, 0.0);
+   *out_vol = create_volume(4, freq_dimorder, NC_FLOAT, TRUE, 0.0, 0.0);
    set_volume_sizes(*out_vol, sizes);
+   set_volume_starts(*out_vol, starts);
    set_volume_separations(*out_vol, separations);
-   set_voxel_to_world_transform(*out_vol, &trans);
-
-   /* define world start position */
-   for_less(i, 0, 4){
-      v[i] = 0.0;
+   set_volume_real_range(*out_vol, min, max);
+   
+   /* copy over the direction cosines for x, y and z */
+   for(i=0; i<3; i++){
+      get_volume_direction_cosine(*in_vol, i, tmp_dircos);
+      set_volume_direction_cosine(*out_vol, i, tmp_dircos);
       }
-   convert_voxel_to_world(*out_vol, v, &world_origin[0], &world_origin[1], &world_origin[2]);
-   world_origin[3] = 0.0;
-   set_volume_translation(*out_vol, voxel_origin, world_origin);
-
+   
    /* allocate space for out_vol */
    alloc_volume_data(*out_vol);
    
    initialize_progress_report(&progress, FALSE, sizes[0], "Prep Volume");
-   for(i = 0; i < sizes[0]; i++){
-      for(j = 0; j < sizes[1]; j++){
-         for(k = 0; k < sizes[2]; k++){
+   for(i = sizes[0]; i--; ){
+      for(j = sizes[1]; j--; ){
+         for(k = sizes[2]; k--; ){
             
             GET_VALUE_3D(value, *in_vol, i, j, k);
             set_volume_real_value(*out_vol, i, j, k, 0, 0, value); /* real */
@@ -100,30 +108,25 @@ Status proj_volume(Volume * in_vol, Volume * out_vol, int job)
    Real     min, max;
 
    int      sizes[4];
+   Real     starts[4];
    Real     separations[4];
-   Real     world_origin[4];
-   Real     voxel_origin[4] = { 0.0, 0.0, 0.0, 0.0 };
-   Real     v[4];
-
-   General_transform trans;
+   Real     tmp_dircos[4];
 
    get_volume_sizes(*in_vol, sizes);
+   get_volume_starts(*in_vol, starts);
    get_volume_separations(*in_vol, separations);
-   copy_general_transform(get_voxel_to_world_transform(*in_vol), &trans);
 
    /* define new out_vol volume  */
-   *out_vol = create_volume(3, spac_dimorder, NC_DOUBLE, TRUE, 0.0, 0.0);
+   *out_vol = create_volume(3, spac_dimorder, NC_FLOAT, TRUE, 0.0, 0.0);
    set_volume_sizes(*out_vol, sizes);
+   set_volume_starts(*out_vol, starts);
    set_volume_separations(*out_vol, separations);
-   set_voxel_to_world_transform(*out_vol, &trans);
-
-   /* define world start position */
-   for_less(i, 0, 3){
-      v[i] = 0.0;
+   
+   /* copy over the direction cosines for x, y and z */
+   for(i=0; i<3; i++){
+      get_volume_direction_cosine(*in_vol, i, tmp_dircos);
+      set_volume_direction_cosine(*out_vol, i, tmp_dircos);
       }
-   convert_voxel_to_world(*out_vol, v, &world_origin[0], &world_origin[1], &world_origin[2]);
-   world_origin[3] = 0.0;
-   set_volume_translation(*out_vol, voxel_origin, world_origin);
 
    /* allocate space for out_vol */
    alloc_volume_data(*out_vol);
@@ -132,9 +135,9 @@ Status proj_volume(Volume * in_vol, Volume * out_vol, int job)
    max = -DBL_MAX;
 
    /* setup the required volume */
-   for(i = 0; i < sizes[0]; i++){
-      for(j = 0; j < sizes[1]; j++){
-         for(k = 0; k < sizes[2]; k++){
+   for(i = sizes[0]; i--; ){
+      for(j = sizes[1]; j--; ){
+         for(k = sizes[2]; k--; ){
 
             real = get_volume_real_value(*in_vol, i, j, k, 0, 0);
             imag = get_volume_real_value(*in_vol, i, j, k, 1, 0);
@@ -211,7 +214,12 @@ Status proj_volume(Volume * in_vol, Volume * out_vol, int job)
 @CALLS      : fftw
 @CREATED    : Thu Nov  4 11:16:54 EST 1993 Louis
 @MODIFIED   : $Log: fft_support.c,v $
-@MODIFIED   : Revision 1.1  2002-09-17 23:44:51  rotor
+@MODIFIED   : Revision 1.2  2002-11-21 01:48:18  rotor
+@MODIFIED   : * Changed complex_vector to MIvector_dimension
+@MODIFIED   : * large reorganisations to the 2D fft calculations
+@MODIFIED   :      to the point that they should be correct now.
+@MODIFIED   :
+@MODIFIED   : Revision 1.1  2002/09/17 23:44:51  rotor
 @MODIFIED   : ----------------------------------------------------------------------
 @MODIFIED   : Initial entry of mincfft to CVS (to perhaps replace louis's old NR
 @MODIFIED   :    version of mincfft
@@ -236,7 +244,101 @@ Status fft_volume(Volume data, int inverse_flg, int dim, int centre)
 /* zero-th element (the default in FFTW).  If all of the dimensions of your     */
 /* array are even, you can accomplish this by simply multiplying each element   */
 /* of the input array by (-1)^(i + j + ...)                                     */
+   
+   Status status;
+   
+   switch(dim){
+   case 2:
+      status = fft_volume_2d(data, inverse_flg, centre);
+      break;
+      
+   case 3:
+      status = fft_volume_3d(data, inverse_flg, centre);
+      break;
+      
+   default:
+      fprintf(stderr, "Glark! I canna do %d dimensional FFT's yet!\n", dim);
+      status = ERROR;
+      break;
+      }
+   
+   return status;
+   }
 
+/* do a 2d fft on a 3d volume (slice by slice) */
+Status fft_volume_2d(Volume data, int inverse_flg, int centre)
+{
+
+   int      i, j, k;
+   int      sizes[4];
+   Real     value, factor, divisor;
+   progress_struct progress;
+
+   fftw_complex *fftw_data;
+   fftw_complex *fftw_data_ptr;
+   fftwnd_plan p;
+   
+   get_volume_sizes(data, sizes);
+   initialize_progress_report(&progress, FALSE, sizes[0], "FFT");
+
+   /* set up tmp data store */
+   fftw_data = (fftw_complex *) malloc(sizes[1] * sizes[2] * sizeof(fftw_complex));
+   
+   /* set up the 2D FFTW plan */
+   p = fftw2d_create_plan(sizes[1], sizes[2],
+                          (inverse_flg) ? FFTW_BACKWARD : FFTW_FORWARD,
+                          FFTW_ESTIMATE | FFTW_IN_PLACE);
+                             
+   /* for each slice */
+   for(i = sizes[0]; i--; ){
+      
+      /* do the super-funky shift to centre calculation if required */
+      fftw_data_ptr = fftw_data;
+      factor = 1.0;
+      for(j = sizes[1]; j--; ){
+         for(k = sizes[2]; k--; ){
+            if(centre){
+               factor = pow(-1.0, j + k);
+               }
+
+            GET_VOXEL_4D(value, data, i, j, k, 0);
+            c_re(*fftw_data_ptr) = (fftw_real) (value * factor);
+
+            GET_VOXEL_4D(value, data, i, j, k, 1);
+            c_im(*fftw_data_ptr) = (fftw_real) (value * factor);
+
+            fftw_data_ptr++;
+            }
+         }
+
+      /* do the FFT */
+      fftwnd_one(p, fftw_data, NULL);
+
+      /* put the data back */
+      divisor = (inverse_flg) ? sizes[1] * sizes[2] : 1.0;
+
+      fftw_data_ptr = fftw_data;
+      for(j = sizes[1]; j--; ){
+         for(k = sizes[2]; k--; ){
+            SET_VOXEL_4D(data, i, j, k, 0, (Real) c_re(*fftw_data_ptr) / divisor);
+            SET_VOXEL_4D(data, i, j, k, 1, (Real) c_im(*fftw_data_ptr) / divisor);
+            fftw_data_ptr++;
+            }
+         }
+      
+      update_progress_report(&progress, sizes[0] - i);
+      }
+
+   /* be tidy */
+   fftwnd_destroy_plan(p);
+   free(fftw_data);
+   terminate_progress_report(&progress);
+
+   return (OK);
+   }
+
+/* do a 3d fft on a 3d volume */
+Status fft_volume_3d(Volume data, int inverse_flg, int centre){
    int      i, j, k;
    int      sizes[4];
    Real     value, factor, divisor;
@@ -255,66 +357,46 @@ Status fft_volume(Volume data, int inverse_flg, int dim, int centre)
    /* do the super-funky shift to centre calculation if required */
    fftw_data_ptr = fftw_data;
    factor = 1.0;
-   for(i = 0; i < sizes[0]; i++){
-      for(j = 0; j < sizes[1]; j++){
-         for(k = 0; k < sizes[2]; k++){
+   for(i = sizes[0]; i--; ){
+      for(j = sizes[1]; j--; ){
+         for(k = sizes[2]; k--; ){
             if(centre){
                factor = pow(-1.0, i + j + k);
                }
 
-            GET_VALUE_4D(value, data, i, j, k, 0);
+            GET_VOXEL_4D(value, data, i, j, k, 0);
             c_re(*fftw_data_ptr) = (fftw_real) (value * factor);
 
-            GET_VALUE_4D(value, data, i, j, k, 1);
+            GET_VOXEL_4D(value, data, i, j, k, 1);
             c_im(*fftw_data_ptr) = (fftw_real) (value * factor);
 
             fftw_data_ptr++;
             }
          }
-      update_progress_report(&progress, i + 1);
+      update_progress_report(&progress, sizes[0] - i);
       }
 
    /* do the FFT */
-   if(dim == 3){
-      p = fftw3d_create_plan(sizes[0], sizes[1], sizes[2],
-                             (inverse_flg) ? FFTW_BACKWARD : FFTW_FORWARD,
-                             FFTW_ESTIMATE | FFTW_IN_PLACE);
+   p = fftw3d_create_plan(sizes[0], sizes[1], sizes[2],
+                          (inverse_flg) ? FFTW_BACKWARD : FFTW_FORWARD,
+                          FFTW_ESTIMATE | FFTW_IN_PLACE);
 
-      fftwnd_one(p, fftw_data, NULL);
-      update_progress_report(&progress, sizes[0] * 2);
-      }
-   else if(dim == 2){
-      p = fftw2d_create_plan(sizes[1], sizes[2],
-                             (inverse_flg) ? FFTW_BACKWARD : FFTW_FORWARD,
-                             FFTW_ESTIMATE | FFTW_IN_PLACE);
-
-      fftw_data_ptr = fftw_data;
-      for(i = 0; i < sizes[0]; i++){
-         fftwnd_one(p, fftw_data_ptr, NULL);
-
-         fftw_data_ptr += (sizes[1] * sizes[2]);
-         update_progress_report(&progress, sizes[0] + i + 1);
-         }
-      }
-   else{
-      fprintf(stderr, "Glark! I canna do %d dimensional FFT's yet!\n", dim);
-      return (ERROR);
-      }
-
+   fftwnd_one(p, fftw_data, NULL);
+   update_progress_report(&progress, sizes[0] * 2);
 
    /* put the data back */
    divisor = (inverse_flg) ? sizes[0] * sizes[1] * sizes[2] : 1.0;
 
    fftw_data_ptr = fftw_data;
-   for(i = 0; i < sizes[0]; i++){
-      for(j = 0; j < sizes[1]; j++){
-         for(k = 0; k < sizes[2]; k++){
+   for(i = sizes[0]; i--; ){
+      for(j = sizes[1]; j--; ){
+         for(k = sizes[2]; k--; ){
             SET_VOXEL_4D(data, i, j, k, 0, (Real) c_re(*fftw_data_ptr) / divisor);
             SET_VOXEL_4D(data, i, j, k, 1, (Real) c_im(*fftw_data_ptr) / divisor);
             fftw_data_ptr++;
             }
          }
-      update_progress_report(&progress, (sizes[0]*2) + i + 1);
+      update_progress_report(&progress, (sizes[0]*3) - i);
       }
 
    /* be tidy */
@@ -324,3 +406,4 @@ Status fft_volume(Volume data, int inverse_flg, int dim, int centre)
 
    return (OK);
    }
+
