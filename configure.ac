@@ -19,10 +19,15 @@ smr_WITH_BUILD_PATH
 AC_PROG_CC
 AC_PROG_INSTALL
 
-
 # Checks for libraries.  See m4/README.
 mni_REQUIRE_VOLUMEIO
 
+# check for fftw
+AC_CHECK_HEADER(fftw.h,
+   AC_CHECK_LIB([fftw], fftw_create_plan, , 
+   AC_MSG_ERROR([*** Could not find libfftw])),
+   AC_MSG_ERROR([*** Header file fftw.h not found])
+   )
 
 # Finish up by writing output files.
 AC_CONFIG_FILES([Makefile])
