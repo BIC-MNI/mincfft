@@ -1,5 +1,6 @@
 PROGS = mincfft
-OBJS = $(PROGS:=.o) fft_support.o
+HEADERS = fft_support.h
+OBJS = $(PROGS:=.o) $(HEADERS:.h=.o)
 
 CC=cc
 

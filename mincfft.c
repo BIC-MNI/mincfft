@@ -10,6 +10,15 @@
 /* Center for Magnetic Resonance                                             */
 /* University of Queensland                                                  */
 /*                                                                           */
+/* Copyright Andrew Janke, The University of Queensland & Louis Collins,     */
+/* Montreal Neurological Institute, Canada.                                  */
+/* Permission to use, copy, modify, and distribute this software and its     */
+/* documentation for any purpose and without fee is hereby granted,          */
+/* provided that the above copyright notice appear in all copies.  The       */
+/* author and the University of Queensland make no representations about the */
+/* suitability of this software for any purpose.  It is provided "as is"     */
+/* without express or implied warranty.                                      */
+/*                                                                           */
 /* 93/11/05  14:20:29 - 1.1 (louis) - initial version                        */
 /* 93/11/08  14:11:20 - 1.2 (louis) - working version with scaling           */
 /* Tue Aug 27 16:25:04 EST 2002 - Major clean up/rewrite                     */
