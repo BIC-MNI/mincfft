@@ -33,11 +33,15 @@
 /* Mon Nov  4 18:04:58 EST 2002 - complex_vector => MIvector_dimension       */
 
 
+#include <config.h>
 #include <float.h>
 #include <volume_io.h>
 #include <ParseArgv.h>
 #include <time_stamp.h>
 #include "fft_support.h"
+
+/* function prototypes */
+void     print_version_info(void);
 
 /* hack for pretty-printing */
 char    *out_names[MAX_OUTFILES] = {
@@ -61,6 +65,10 @@ int      is_signed = FALSE;
 nc_type  dtype = NC_FLOAT;
 
 static ArgvInfo argTable[] = {
+   {NULL, ARGV_HELP, (char *)NULL, (char *)NULL,
+    "General options:"},
+   {"-version", ARGV_FUNC, (char *)print_version_info, (char *)NULL,
+    "print version info and exit"},
    {"-verbose", ARGV_CONSTANT, (char *)TRUE, (char *)&verbose,
     "Print out extra information."},
    {"-clobber", ARGV_CONSTANT, (char *)TRUE, (char *)&clobber,
@@ -281,4 +289,12 @@ main(int argc, char *argv[])
 
    delete_volume(data);
    return (status);
+   }
+
+void print_version_info(void)
+{
+   fprintf(stdout, "%s version %s\n", PACKAGE, VERSION);
+   fprintf(stdout, "Comments to %s\n", PACKAGE_BUGREPORT);
+   fprintf(stdout, "\n");
+   exit(EXIT_SUCCESS);
    }
