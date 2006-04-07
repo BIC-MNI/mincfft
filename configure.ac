@@ -2,7 +2,7 @@
 AC_PREREQ([2.57])
 
 # The arguments are package name, and package version.
-AC_INIT([mincfft],[1.1.1],[Andrew Janke <a.janke@gmail.com>])
+AC_INIT([mincfft],[1.1.2],[Andrew Janke <a.janke@gmail.com>])
 AC_CONFIG_SRCDIR([mincfft.c])
 
 AM_INIT_AUTOMAKE
