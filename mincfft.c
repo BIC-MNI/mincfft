@@ -6,7 +6,7 @@
 /* Brain Imaging Centre                                                      */
 /* Montreal Neurological Institute                                           */
 /*                                                                           */
-/* Andrew Janke - rotor@cmr.uq.edu.au                                        */
+/* Andrew Janke - a.janke@gmail.com                                          */
 /* Center for Magnetic Resonance                                             */
 /* University of Queensland                                                  */
 /*                                                                           */
