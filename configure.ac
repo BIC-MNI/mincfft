@@ -23,10 +23,10 @@ AC_PROG_INSTALL
 mni_REQUIRE_VOLUMEIO
 
 # check for fftw
-AC_CHECK_HEADER(fftw.h,
-   AC_CHECK_LIB([fftw], fftw_create_plan, , 
-   AC_MSG_ERROR([*** Could not find libfftw])),
-   AC_MSG_ERROR([*** Header file fftw.h not found])
+AC_CHECK_HEADER(fftw3.h,
+   AC_CHECK_LIB([fftw3], fftw_plan_dft_1d, ,
+   AC_MSG_ERROR([*** Could not find libfftw3])),
+   AC_MSG_ERROR([*** Header file fftw3.h not found])
    )
 
 # Finish up by writing output files.

@@ -6,7 +6,10 @@
 @CALLS      : 
 @CREATED    : Fri Nov  5 11:16:54 EST 1993 Louis Collins
 @MODIFIED   : $Log: fft_support.c,v $
-@MODIFIED   : Revision 1.3  2003-08-14 07:52:08  rotor
+@MODIFIED   : Revision 1.4  2006-05-18 21:27:45  jharlap
+@MODIFIED   : updated to use FFTW3 instead of FFTW2
+@MODIFIED   :
+@MODIFIED   : Revision 1.3  2003/08/14 07:52:08  rotor
 @MODIFIED   : * added checking for even dimension sizes if doing a shift to centre calculation
 @MODIFIED   :
 @MODIFIED   : Revision 1.2  2002/11/21 01:48:18  rotor
@@ -35,8 +38,12 @@
 
 #include <math.h>
 #include <float.h>
-#include <fftw.h>
+#include <fftw3.h>
 #include "fft_support.h"
+
+/* definitions to support fftw2 complex data type operations in fftw3 */
+#define c_re(c) ((c)[0])
+#define c_im(c) ((c)[1])
 
 /* function prototypes */
 Status   fft_volume_3d(Volume data, int inverse_flg, int centre);
@@ -216,7 +223,10 @@ Status proj_volume(Volume * in_vol, Volume * out_vol, int job)
 @CALLS      : fftw
 @CREATED    : Thu Nov  4 11:16:54 EST 1993 Louis
 @MODIFIED   : $Log: fft_support.c,v $
-@MODIFIED   : Revision 1.3  2003-08-14 07:52:08  rotor
+@MODIFIED   : Revision 1.4  2006-05-18 21:27:45  jharlap
+@MODIFIED   : updated to use FFTW3 instead of FFTW2
+@MODIFIED   :
+@MODIFIED   : Revision 1.3  2003/08/14 07:52:08  rotor
 @MODIFIED   : * added checking for even dimension sizes if doing a shift to centre calculation
 @MODIFIED   :
 @MODIFIED   : Revision 1.2  2002/11/21 01:48:18  rotor
@@ -281,7 +291,7 @@ Status fft_volume_2d(Volume data, int inverse_flg, int centre)
 
    fftw_complex *fftw_data;
    fftw_complex *fftw_data_ptr;
-   fftwnd_plan p;
+   fftw_plan p;
 
    get_volume_sizes(data, sizes);
 
@@ -298,11 +308,6 @@ Status fft_volume_2d(Volume data, int inverse_flg, int centre)
    /* set up tmp data store */
    fftw_data = (fftw_complex *) malloc(sizes[1] * sizes[2] * sizeof(fftw_complex));
 
-   /* set up the 2D FFTW plan */
-   p = fftw2d_create_plan(sizes[1], sizes[2],
-                          (inverse_flg) ? FFTW_BACKWARD : FFTW_FORWARD,
-                          FFTW_ESTIMATE | FFTW_IN_PLACE);
-
    /* for each slice */
    for(i = sizes[0]; i--;){
 
@@ -316,17 +321,22 @@ Status fft_volume_2d(Volume data, int inverse_flg, int centre)
                }
 
             GET_VOXEL_4D(value, data, i, j, k, 0);
-            c_re(*fftw_data_ptr) = (fftw_real) (value * factor);
+            c_re(*fftw_data_ptr) = (double) (value * factor);
 
             GET_VOXEL_4D(value, data, i, j, k, 1);
-            c_im(*fftw_data_ptr) = (fftw_real) (value * factor);
+            c_im(*fftw_data_ptr) = (double) (value * factor);
 
             fftw_data_ptr++;
             }
          }
 
       /* do the FFT */
-      fftwnd_one(p, fftw_data, NULL);
+      p = fftw_plan_dft_2d(sizes[1], sizes[2],
+                          fftw_data, fftw_data,
+                          (inverse_flg) ? FFTW_BACKWARD : FFTW_FORWARD,
+                          FFTW_ESTIMATE);
+                          
+      fftw_execute(p);
 
       /* put the data back */
       divisor = (inverse_flg) ? sizes[1] * sizes[2] : 1.0;
@@ -344,7 +354,7 @@ Status fft_volume_2d(Volume data, int inverse_flg, int centre)
       }
 
    /* be tidy */
-   fftwnd_destroy_plan(p);
+   fftw_destroy_plan(p);
    free(fftw_data);
    terminate_progress_report(&progress);
 
@@ -361,7 +371,7 @@ Status fft_volume_3d(Volume data, int inverse_flg, int centre)
 
    fftw_complex *fftw_data;
    fftw_complex *fftw_data_ptr;
-   fftwnd_plan p;
+   fftw_plan p;
 
    get_volume_sizes(data, sizes);
 
@@ -377,7 +387,7 @@ Status fft_volume_3d(Volume data, int inverse_flg, int centre)
 
    /* set up tmp data store */
    fftw_data =
-      (fftw_complex *) malloc(sizes[0] * sizes[1] * sizes[2] * sizeof(fftw_complex));
+      (fftw_complex *) fftw_malloc(sizes[0] * sizes[1] * sizes[2] * sizeof(fftw_complex));
 
    /* do the super-funky shift to centre calculation if required */
    fftw_data_ptr = fftw_data;
@@ -390,10 +400,10 @@ Status fft_volume_3d(Volume data, int inverse_flg, int centre)
                }
 
             GET_VOXEL_4D(value, data, i, j, k, 0);
-            c_re(*fftw_data_ptr) = (fftw_real) (value * factor);
+            c_re(*fftw_data_ptr) = (double) (value * factor);
 
             GET_VOXEL_4D(value, data, i, j, k, 1);
-            c_im(*fftw_data_ptr) = (fftw_real) (value * factor);
+            c_im(*fftw_data_ptr) = (double) (value * factor);
 
             fftw_data_ptr++;
             }
@@ -402,11 +412,13 @@ Status fft_volume_3d(Volume data, int inverse_flg, int centre)
       }
 
    /* do the FFT */
-   p = fftw3d_create_plan(sizes[0], sizes[1], sizes[2],
+   p = fftw_plan_dft_3d(sizes[0], sizes[1], sizes[2],
+                          fftw_data, fftw_data,
                           (inverse_flg) ? FFTW_BACKWARD : FFTW_FORWARD,
-                          FFTW_ESTIMATE | FFTW_IN_PLACE);
+                          FFTW_ESTIMATE);
+                          
 
-   fftwnd_one(p, fftw_data, NULL);
+   fftw_execute(p);
    update_progress_report(&progress, sizes[0] * 2);
 
    /* put the data back */
@@ -425,8 +437,8 @@ Status fft_volume_3d(Volume data, int inverse_flg, int centre)
       }
 
    /* be tidy */
-   fftwnd_destroy_plan(p);
-   free(fftw_data);
+   fftw_destroy_plan(p);
+   fftw_free(fftw_data);
    terminate_progress_report(&progress);
 
    return (OK);
