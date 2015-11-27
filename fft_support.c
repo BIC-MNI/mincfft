@@ -1,40 +1,5 @@
-/* ----------------------------- MNI Header -----------------------------------
-@NAME       : fft_support.c
-@DESCRIPTION: collection of routines to prepare and manipulate complex data
-@METHOD     :
-@GLOBALS    :
-@CALLS      :
-@CREATED    : Fri Nov  5 11:16:54 EST 1993 Louis Collins
-@MODIFIED   : $Log: fft_support.c,v $
-@MODIFIED   : Revision 1.4  2006-05-18 21:27:45  jharlap
-@MODIFIED   : updated to use FFTW3 instead of FFTW2
-@MODIFIED   :
-@MODIFIED   : Revision 1.3  2003/08/14 07:52:08  rotor
-@MODIFIED   : * added checking for even dimension sizes if doing a shift to centre calculation
-@MODIFIED   :
-@MODIFIED   : Revision 1.2  2002/11/21 01:48:18  rotor
-@MODIFIED   : * Changed complex_vector to MIvector_dimension
-@MODIFIED   : * large reorganisations to the 2D fft calculations
-@MODIFIED   :      to the point that they should be correct now.
-@MODIFIED   :
-@MODIFIED   : Revision 1.1  2002/09/17 23:44:51  rotor
-@MODIFIED   : ----------------------------------------------------------------------
-@MODIFIED   : Initial entry of mincfft to CVS (to perhaps replace louis's old NR
-@MODIFIED   :    version of mincfft
-@MODIFIED   :
-@MODIFIED   : Committing in .
-@MODIFIED   :
-@MODIFIED   : Added Files:
-@MODIFIED   :  Makefile fft_support.c fft_support.h mincfft.c
-@MODIFIED   : ----------------------------------------------------------------------
-@MODIFIED   :
- * Revision 1.2  93/11/08  14:11:16  louis
- * working version, with proper scaling
- *
- * Revision 1.1  93/11/05  14:19:34  louis
- * Initial revision
- *
----------------------------------------------------------------------------- */
+/* fft_support.c */
+/* collection of routines to prepare and manipulate complex data  */
 
 #include <math.h>
 #include <float.h>
@@ -46,24 +11,24 @@
 #define c_im(c) ((c)[1])
 
 /* function prototypes */
-Status   fft_volume_3d(VIO_Volume data, int inverse_flg, int centre);
-Status   fft_volume_2d(VIO_Volume data, int inverse_flg, int centre);
+VIO_Status   fft_volume_3d(VIO_Volume data, int inverse_flg, int centre);
+VIO_Status   fft_volume_2d(VIO_Volume data, int inverse_flg, int centre);
 
 extern char *spac_dimorder[];
 extern char *freq_dimorder[];
 extern int centre_fft;
 
-Status prep_volume(VIO_Volume * in_vol, VIO_Volume * out_vol)
+VIO_Status prep_volume(VIO_Volume * in_vol, VIO_Volume * out_vol)
 {
    int      i, j, k;
-   Real     value;
-   progress_struct progress;
-   Real     min, max;
+   VIO_Real     value;
+   VIO_progress_struct progress;
+   VIO_Real     min, max;
 
    int      sizes[4];
-   Real     starts[4];
-   Real     separations[4];
-   Real     tmp_dircos[4];
+   VIO_Real     starts[4];
+   VIO_Real     separations[4];
+   VIO_Real     tmp_dircos[4];
 
    get_volume_sizes(*in_vol, sizes);
    get_volume_starts(*in_vol, starts);
@@ -75,7 +40,7 @@ Status prep_volume(VIO_Volume * in_vol, VIO_Volume * out_vol)
    starts[3] = 0;
    separations[3] = 1;
 
-   /* define new out_vol volume  */
+   /* define new out_vol VIO_Volume  */
    *out_vol = create_volume(4, freq_dimorder, NC_FLOAT, TRUE, 0.0, 0.0);
    set_volume_sizes(*out_vol, sizes);
    set_volume_starts(*out_vol, starts);
@@ -91,7 +56,7 @@ Status prep_volume(VIO_Volume * in_vol, VIO_Volume * out_vol)
    /* allocate space for out_vol */
    alloc_volume_data(*out_vol);
 
-   initialize_progress_report(&progress, FALSE, sizes[0], "Prep Volume");
+   initialize_progress_report(&progress, FALSE, sizes[0], "Prep VIO_Volume");
    for(i = sizes[0]; i--;){
       for(j = sizes[1]; j--;){
          for(k = sizes[2]; k--;){
@@ -107,25 +72,25 @@ Status prep_volume(VIO_Volume * in_vol, VIO_Volume * out_vol)
    /* be tidy */
    terminate_progress_report(&progress);
 
-   return (OK);
+   return (VIO_OK);
    }
 
-Status proj_volume(Volume * in_vol, Volume * out_vol, int job)
+VIO_Status proj_volume(VIO_Volume * in_vol, VIO_Volume * out_vol, int job)
 {
    int      i, j, k;
-   Real     value, real, imag;
-   Real     min, max;
+   VIO_Real     value, real, imag;
+   VIO_Real     min, max;
 
    int      sizes[4];
-   Real     starts[4];
-   Real     separations[4];
-   Real     tmp_dircos[4];
+   VIO_Real     starts[4];
+   VIO_Real     separations[4];
+   VIO_Real     tmp_dircos[4];
 
    get_volume_sizes(*in_vol, sizes);
    get_volume_starts(*in_vol, starts);
    get_volume_separations(*in_vol, separations);
 
-   /* define new out_vol volume  */
+   /* define new out_vol VIO_Volume  */
    *out_vol = create_volume(3, spac_dimorder, NC_FLOAT, TRUE, 0.0, 0.0);
    set_volume_sizes(*out_vol, sizes);
    set_volume_starts(*out_vol, starts);
@@ -143,7 +108,7 @@ Status proj_volume(Volume * in_vol, Volume * out_vol, int job)
    min = DBL_MAX;
    max = -DBL_MAX;
 
-   /* setup the required volume */
+   /* setup the required VIO_Volume */
    for(i = sizes[0]; i--;){
       for(j = sizes[1]; j--;){
          for(k = sizes[2]; k--;){
@@ -207,49 +172,16 @@ Status proj_volume(Volume * in_vol, Volume * out_vol, int job)
       }
 
    set_volume_real_range(*out_vol, min, max);
-   return (OK);
+   return (VIO_OK);
    }
 
 /* ----------------------------- MNI Header -----------------------------------
 @NAME       : fft_volume.c
-@INPUT      : data - a pointer to a volume_struct of data
+@INPUT      : data - a pointer to a VIO_Volume_struct of data
               inverse_flg = TRUE if inverse fft to be done.
-@OUTPUT     : data -
 @RETURNS    : status variable - OK or ERROR.
-@DESCRIPTION: this procedure uses numerical recipes routines
-              to do an N-dimensional fourier transform.
-@METHOD     :
-@GLOBALS    :
-@CALLS      : fftw
-@CREATED    : Thu Nov  4 11:16:54 EST 1993 Louis
-@MODIFIED   : $Log: fft_support.c,v $
-@MODIFIED   : Revision 1.4  2006-05-18 21:27:45  jharlap
-@MODIFIED   : updated to use FFTW3 instead of FFTW2
-@MODIFIED   :
-@MODIFIED   : Revision 1.3  2003/08/14 07:52:08  rotor
-@MODIFIED   : * added checking for even dimension sizes if doing a shift to centre calculation
-@MODIFIED   :
-@MODIFIED   : Revision 1.2  2002/11/21 01:48:18  rotor
-@MODIFIED   : * Changed complex_vector to MIvector_dimension
-@MODIFIED   : * large reorganisations to the 2D fft calculations
-@MODIFIED   :      to the point that they should be correct now.
-@MODIFIED   :
-@MODIFIED   : Revision 1.1  2002/09/17 23:44:51  rotor
-@MODIFIED   : ----------------------------------------------------------------------
-@MODIFIED   : Initial entry of mincfft to CVS (to perhaps replace louis's old NR
-@MODIFIED   :    version of mincfft
-@MODIFIED   :
-@MODIFIED   : Committing in .
-@MODIFIED   :
-@MODIFIED   : Added Files:
-@MODIFIED   :  Makefile fft_support.c fft_support.h mincfft.c
-@MODIFIED   : ----------------------------------------------------------------------
-@MODIFIED   :
- * Revision 1.1  93/11/05  14:19:52  louis
- * Initial revision
- *
----------------------------------------------------------------------------- */
-Status fft_volume(Volume data, int inverse_flg, int dim, int centre)
+ */
+VIO_Status fft_volume(VIO_Volume data, int inverse_flg, int dim, int centre)
 {
 /* From the fftw FAQ                                                            */
 /* 3.5 How can I make FFTW put the origin at the center of its output?          */
@@ -260,7 +192,7 @@ Status fft_volume(Volume data, int inverse_flg, int dim, int centre)
 /* array are even, you can accomplish this by simply multiplying each element   */
 /* of the input array by (-1)^(i + j + ...)                                     */
 
-   Status   status;
+   VIO_Status   status;
 
    switch (dim){
    case 2:
@@ -273,21 +205,21 @@ Status fft_volume(Volume data, int inverse_flg, int dim, int centre)
 
    default:
       fprintf(stderr, "Glark! I canna do %d dimensional FFT's yet!\n", dim);
-      status = ERROR;
+      status = VIO_ERROR;
       break;
       }
 
    return status;
    }
 
-/* do a 2d fft on a 3d volume (slice by slice) */
-Status fft_volume_2d(Volume data, int inverse_flg, int centre)
+/* do a 2d fft on a 3d VIO_Volume (slice by slice) */
+VIO_Status fft_volume_2d(VIO_Volume data, int inverse_flg, int centre)
 {
 
    int      i, j, k;
    int      sizes[4];
-   Real     value, factor, divisor;
-   progress_struct progress;
+   VIO_Real     value, factor, divisor;
+   VIO_progress_struct progress;
 
    fftw_complex *fftw_data;
    fftw_complex *fftw_data_ptr;
@@ -344,8 +276,8 @@ Status fft_volume_2d(Volume data, int inverse_flg, int centre)
       fftw_data_ptr = fftw_data;
       for(j = sizes[1]; j--;){
          for(k = sizes[2]; k--;){
-            SET_VOXEL_4D(data, i, j, k, 0, (Real) c_re(*fftw_data_ptr) / divisor);
-            SET_VOXEL_4D(data, i, j, k, 1, (Real) c_im(*fftw_data_ptr) / divisor);
+            SET_VOXEL_4D(data, i, j, k, 0, (VIO_Real) c_re(*fftw_data_ptr) / divisor);
+            SET_VOXEL_4D(data, i, j, k, 1, (VIO_Real) c_im(*fftw_data_ptr) / divisor);
             fftw_data_ptr++;
             }
          }
@@ -358,16 +290,16 @@ Status fft_volume_2d(Volume data, int inverse_flg, int centre)
    free(fftw_data);
    terminate_progress_report(&progress);
 
-   return (OK);
+   return (VIO_OK);
    }
 
-/* do a 3d fft on a 3d volume */
-Status fft_volume_3d(Volume data, int inverse_flg, int centre)
+/* do a 3d fft on a 3d VIO_Volume */
+VIO_Status fft_volume_3d(VIO_Volume data, int inverse_flg, int centre)
 {
    int      i, j, k;
    int      sizes[4];
-   Real     value, factor, divisor;
-   progress_struct progress;
+   VIO_Real     value, factor, divisor;
+   VIO_progress_struct progress;
 
    fftw_complex *fftw_data;
    fftw_complex *fftw_data_ptr;
@@ -428,8 +360,8 @@ Status fft_volume_3d(Volume data, int inverse_flg, int centre)
    for(i = sizes[0]; i--;){
       for(j = sizes[1]; j--;){
          for(k = sizes[2]; k--;){
-            SET_VOXEL_4D(data, i, j, k, 0, (Real) c_re(*fftw_data_ptr) / divisor);
-            SET_VOXEL_4D(data, i, j, k, 1, (Real) c_im(*fftw_data_ptr) / divisor);
+            SET_VOXEL_4D(data, i, j, k, 0, (VIO_Real) c_re(*fftw_data_ptr) / divisor);
+            SET_VOXEL_4D(data, i, j, k, 1, (VIO_Real) c_im(*fftw_data_ptr) / divisor);
             fftw_data_ptr++;
             }
          }
@@ -441,5 +373,5 @@ Status fft_volume_3d(Volume data, int inverse_flg, int centre)
    fftw_free(fftw_data);
    terminate_progress_report(&progress);
 
-   return (OK);
+   return (VIO_OK);
    }

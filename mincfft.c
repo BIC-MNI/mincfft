@@ -18,22 +18,8 @@
 /* author and the University of Queensland make no representations about the */
 /* suitability of this software for any purpose.  It is provided "as is"     */
 /* without express or implied warranty.                                      */
-/*                                                                           */
-/* 93/11/05  14:20:29 - 1.1 (louis) - initial version                        */
-/* 93/11/08  14:11:20 - 1.2 (louis) - working version with scaling           */
-/* Tue Aug 27 16:25:04 EST 2002 - Major clean up/rewrite                     */
-/*                              - Removal of NR code                         */
-/*                              - Added calls to FFTW                        */
-/*                              - removed get_volume_true_min_max function   */
-/*                              - Added output filetype options              */
-/*                              - Added -phase option.                       */
-/*                              - code to allow reconstruction of FID's      */
-/*                              - Added option of reading in 3D/4D files     */
-/* Thu Aug 29 10:09:07 EST 2002 - Changed options to allow multiple outfiles */
-/* Mon Nov  4 18:04:58 EST 2002 - complex_vector => MIvector_dimension       */
 
 
-#include <config.h>
 #include <float.h>
 #include <volume_io.h>
 #include <ParseArgv.h>
@@ -127,17 +113,17 @@ static ArgvInfo argTable[] = {
 char    *spac_dimorder[] = { MIzspace, MIyspace, MIxspace };
 char    *freq_dimorder[] = { MIzspace, MIyspace, MIxspace, MIvector_dimension };
 
-main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
    char    *in_fn;
    char    *history;
-   Status   status;
-   Volume   tmp;
-   Volume   data;
-   Volume  *vol_ptr = NULL;
+   VIO_Status   status;
+   VIO_Volume   tmp;
+   VIO_Volume   data;
+   VIO_Volume  *vol_ptr = NULL;
    int      c, in_ndims;
    int      n_outfiles;
-   Real     min, max;
+   VIO_Real     min, max;
 
    minc_input_options in_ops;
 
@@ -194,13 +180,13 @@ main(int argc, char *argv[])
       delete_volume(tmp);
       }
 
-   if(status != OK){
+   if(status != VIO_OK){
       fprintf(stderr, "Problems reading: %s\n", in_fn);
       exit(EXIT_FAILURE);
       }
 
    if(verbose){
-      Real     min_value, max_value;
+      VIO_Real     min_value, max_value;
 
       get_volume_real_range(data, &min_value, &max_value);
 
@@ -218,7 +204,7 @@ main(int argc, char *argv[])
       }
 
    /* FFT the volume */
-   if(fft_volume(data, inv_fft, fft_dim, centre_fft) != OK){
+   if(fft_volume(data, inv_fft, fft_dim, centre_fft) != VIO_OK){
       print_error("Problems during FFT of: %s", in_fn);
       }
 
@@ -234,7 +220,7 @@ main(int argc, char *argv[])
          /* do the projection if neccesarry */
          tmp = NULL;
          if(c == OUTPUT_REAL_AND_IMAG){
-            Real     value;
+            VIO_Real     value;
             int      i, j, k, l;
             int      sizes[4];
 
@@ -276,7 +262,7 @@ main(int argc, char *argv[])
 
          if(output_modified_volume(outfiles[c],
                                     dtype, is_signed, 0, 0,
-                                    *vol_ptr, in_fn, history, NULL) != OK){
+                                    *vol_ptr, in_fn, history, NULL) != VIO_OK){
             print_error("Problems outputing: %s", outfiles[c]);
             }
 
@@ -293,7 +279,7 @@ main(int argc, char *argv[])
 
 void print_version_info(void)
 {
-   fprintf(stdout, "%s version %s\n", PACKAGE, VERSION);
+   fprintf(stdout, "%s version %s\n", PACKAGE_NAME, PACKAGE_VERSION);
    fprintf(stdout, "Comments to %s\n", PACKAGE_BUGREPORT);
    fprintf(stdout, "\n");
    exit(EXIT_SUCCESS);
