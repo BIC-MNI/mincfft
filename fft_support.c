@@ -1,9 +1,9 @@
 /* ----------------------------- MNI Header -----------------------------------
 @NAME       : fft_support.c
 @DESCRIPTION: collection of routines to prepare and manipulate complex data
-@METHOD     : 
-@GLOBALS    : 
-@CALLS      : 
+@METHOD     :
+@GLOBALS    :
+@CALLS      :
 @CREATED    : Fri Nov  5 11:16:54 EST 1993 Louis Collins
 @MODIFIED   : $Log: fft_support.c,v $
 @MODIFIED   : Revision 1.4  2006-05-18 21:27:45  jharlap
@@ -30,10 +30,10 @@
 @MODIFIED   :
  * Revision 1.2  93/11/08  14:11:16  louis
  * working version, with proper scaling
- * 
+ *
  * Revision 1.1  93/11/05  14:19:34  louis
  * Initial revision
- * 
+ *
 ---------------------------------------------------------------------------- */
 
 #include <math.h>
@@ -46,14 +46,14 @@
 #define c_im(c) ((c)[1])
 
 /* function prototypes */
-Status   fft_volume_3d(Volume data, int inverse_flg, int centre);
-Status   fft_volume_2d(Volume data, int inverse_flg, int centre);
+Status   fft_volume_3d(VIO_Volume data, int inverse_flg, int centre);
+Status   fft_volume_2d(VIO_Volume data, int inverse_flg, int centre);
 
 extern char *spac_dimorder[];
 extern char *freq_dimorder[];
 extern int centre_fft;
 
-Status prep_volume(Volume * in_vol, Volume * out_vol)
+Status prep_volume(VIO_Volume * in_vol, VIO_Volume * out_vol)
 {
    int      i, j, k;
    Real     value;
@@ -218,8 +218,8 @@ Status proj_volume(Volume * in_vol, Volume * out_vol, int job)
 @RETURNS    : status variable - OK or ERROR.
 @DESCRIPTION: this procedure uses numerical recipes routines
               to do an N-dimensional fourier transform.
-@METHOD     : 
-@GLOBALS    : 
+@METHOD     :
+@GLOBALS    :
 @CALLS      : fftw
 @CREATED    : Thu Nov  4 11:16:54 EST 1993 Louis
 @MODIFIED   : $Log: fft_support.c,v $
@@ -247,7 +247,7 @@ Status proj_volume(Volume * in_vol, Volume * out_vol, int job)
 @MODIFIED   :
  * Revision 1.1  93/11/05  14:19:52  louis
  * Initial revision
- * 
+ *
 ---------------------------------------------------------------------------- */
 Status fft_volume(Volume data, int inverse_flg, int dim, int centre)
 {
@@ -335,7 +335,7 @@ Status fft_volume_2d(Volume data, int inverse_flg, int centre)
                           fftw_data, fftw_data,
                           (inverse_flg) ? FFTW_BACKWARD : FFTW_FORWARD,
                           FFTW_ESTIMATE);
-                          
+
       fftw_execute(p);
 
       /* put the data back */
@@ -416,7 +416,7 @@ Status fft_volume_3d(Volume data, int inverse_flg, int centre)
                           fftw_data, fftw_data,
                           (inverse_flg) ? FFTW_BACKWARD : FFTW_FORWARD,
                           FFTW_ESTIMATE);
-                          
+
 
    fftw_execute(p);
    update_progress_report(&progress, sizes[0] * 2);
