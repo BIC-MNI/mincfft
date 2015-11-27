@@ -16,14 +16,14 @@
 @MODIFIED   :
  * Revision 1.1  93/11/05  14:21:07  louis
  * Initial revision
- * 
+ *
 ---------------------------------------------------------------------------- */
 
 #ifndef FFT_SUPPORT_H
 #define FFT_SUPPORT_H
 
 
-#include <volume_io.h>
+#include <minc2.h>
 
 #define   MAX_OUTFILES           8
 #define   OUTPUT_REAL_AND_IMAG   0
