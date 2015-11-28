@@ -77,8 +77,12 @@ static ArgvInfo argTable[] = {
     "Write unsigned integer data."},
 
    {NULL, ARGV_HELP, NULL, NULL, "\nFFT options"},
+   {"-1D", ARGV_CONSTANT, (char *)1, (char *)&fft_dim,
+    "Do a 1D FFT."},
    {"-2D", ARGV_CONSTANT, (char *)2, (char *)&fft_dim,
-    "Do a 2D FFT (Default 3D)."},
+    "Do a 2D FFT."},
+   {"-3D", ARGV_CONSTANT, (char *)3, (char *)&fft_dim,
+    "Do a 3D FFT (Default)."},
    {"-forward", ARGV_CONSTANT, (char *)FALSE, (char *)&inv_fft,
     "Calculate the forward FFT (default)."},
    {"-inverse", ARGV_CONSTANT, (char *)TRUE, (char *)&inv_fft,

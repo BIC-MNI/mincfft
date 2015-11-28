@@ -1,7 +1,12 @@
+2015-11-28  Andrew L Janke <a.janke@gmail.com>
+   * converted to CMAKE
+   * Added support for 1d fft's
+   * working on support for FFT of 4D volumes
+
 2006-04-07  Andrew Janke <a.janke@gmail.com>
 
 	* Added epm-header.in to distro
 
-2003-10-25  ANDREW L. JANKE  <A.JANKE@GMAIL.COM>
+2003-10-25  ANDREW L. JANKE  <a.janke@gmail.com>
 
 	* Completed initial auto-confiscation
