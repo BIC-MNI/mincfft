@@ -44,4 +44,4 @@ ADD_EXECUTABLE(mincfft
 TARGET_LINK_LIBRARIES(mincfft ${FFTW_LIBRARIES})
 
 # what and where to install
-INSTALL( TARGETS mincfft  DESTINATION bin)
+INSTALL( TARGETS mincfft DESTINATION bin)

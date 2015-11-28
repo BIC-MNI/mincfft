@@ -11,8 +11,9 @@
 #define c_im(c) ((c)[1])
 
 /* function prototypes */
-VIO_Status   fft_volume_3d(VIO_Volume data, int inverse_flg, int centre);
-VIO_Status   fft_volume_2d(VIO_Volume data, int inverse_flg, int centre);
+VIO_Status fft_volume_1d(VIO_Volume data, int inverse_flg, int centre);
+VIO_Status fft_volume_2d(VIO_Volume data, int inverse_flg, int centre);
+VIO_Status fft_volume_3d(VIO_Volume data, int inverse_flg, int centre);
 
 extern char *spac_dimorder[];
 extern char *freq_dimorder[];
@@ -195,6 +196,10 @@ VIO_Status fft_volume(VIO_Volume data, int inverse_flg, int dim, int centre)
    VIO_Status   status;
 
    switch (dim){
+   case 1:
+      status = fft_volume_1d(data, inverse_flg, centre);
+      break;
+
    case 2:
       status = fft_volume_2d(data, inverse_flg, centre);
       break;
@@ -211,6 +216,87 @@ VIO_Status fft_volume(VIO_Volume data, int inverse_flg, int dim, int centre)
 
    return status;
    }
+
+/* do a 1d fft on a 3d VIO_Volume (column by column) */
+VIO_Status fft_volume_1d(VIO_Volume data, int inverse_flg, int centre){
+   int i, j, k;
+   int sizes[4];
+   VIO_Real value;
+   VIO_Real factor;
+   VIO_Real divisor;
+   VIO_progress_struct progress;
+
+   fftw_complex *fftw_data;
+   fftw_complex *fftw_data_ptr;
+   fftw_plan p;
+
+   get_volume_sizes(data, sizes);
+
+   /* check that sizes are even if shifting to centre */
+   if(centre && (sizes[2] % 2 != 0)){
+      fprintf(stderr,
+              "fft_volume_1d: length of first dimension (%d) must be even if using -centre\n\n",
+              sizes[2]);
+      exit(EXIT_FAILURE);
+      }
+
+   initialize_progress_report(&progress, FALSE, sizes[0], "FFT");
+
+   /* set up tmp data store */
+   fftw_data = (fftw_complex *) malloc(sizes[2] * sizeof(fftw_complex));
+
+   /* for each slice */
+   for(i = sizes[0]; i--;){
+      for(j = sizes[1]; j--;){
+
+         /* do the super-funky shift to centre calculation if required */
+         fftw_data_ptr = fftw_data;
+         factor = 1.0;
+
+         for(k = sizes[2]; k--;){
+            if(centre){
+               factor = pow(-1.0, k);
+               }
+
+            GET_VOXEL_4D(value, data, i, j, k, 0);
+            c_re(*fftw_data_ptr) = (double)(value * factor);
+
+            GET_VOXEL_4D(value, data, i, j, k, 1);
+            c_im(*fftw_data_ptr) = (double)(value * factor);
+
+            fftw_data_ptr++;
+            }
+
+         /* do the FFT */
+         p = fftw_plan_dft_1d(sizes[2],
+            fftw_data, fftw_data,
+            (inverse_flg) ? FFTW_BACKWARD : FFTW_FORWARD,
+            FFTW_ESTIMATE);
+
+         fftw_execute(p);
+
+         /* put the data back */
+         divisor = (inverse_flg) ? sizes[2] : 1.0;
+
+         fftw_data_ptr = fftw_data;
+         for(k = sizes[2]; k--;){
+            SET_VOXEL_4D(data, i, j, k, 0, (VIO_Real) c_re(*fftw_data_ptr) / divisor);
+            SET_VOXEL_4D(data, i, j, k, 1, (VIO_Real) c_im(*fftw_data_ptr) / divisor);
+            fftw_data_ptr++;
+            }
+         }
+
+      update_progress_report(&progress, sizes[0] - i);
+      }
+
+   /* be tidy */
+   fftw_destroy_plan(p);
+   free(fftw_data);
+   terminate_progress_report(&progress);
+
+   return (VIO_OK);
+   }
+
 
 /* do a 2d fft on a 3d VIO_Volume (slice by slice) */
 VIO_Status fft_volume_2d(VIO_Volume data, int inverse_flg, int centre)
