@@ -21,16 +21,15 @@
 
 
 #include <float.h>
-#include <volume_io.h>
 #include <ParseArgv.h>
 #include <time_stamp.h>
 #include "fft_support.h"
 
 /* function prototypes */
-void     print_version_info(void);
+void print_version_info(void);
 
 /* hack for pretty-printing */
-char    *out_names[MAX_OUTFILES] = {
+char *out_names[MAX_OUTFILES] = {
    "real+imag",
    "real     ",
    "imag     ",
@@ -110,17 +109,16 @@ static ArgvInfo argTable[] = {
    {NULL, ARGV_END, NULL, NULL, NULL}
 };
 
-char    *spac_dimorder[] = { MIzspace, MIyspace, MIxspace };
-char    *freq_dimorder[] = { MIzspace, MIyspace, MIxspace, MIvector_dimension };
+char *spac_dimorder[] = { MIzspace, MIyspace, MIxspace };
+char *freq_dimorder[] = { MIzspace, MIyspace, MIxspace, MIvector_dimension };
 
-int main(int argc, char *argv[])
-{
-   char    *in_fn;
-   char    *history;
-   VIO_Status   status;
-   VIO_Volume   tmp;
-   VIO_Volume   data;
-   VIO_Volume  *vol_ptr = NULL;
+int main(int argc, char *argv[]){
+   char *in_fn;
+   char *history;
+   VIO_Status status;
+   VIO_Volume tmp;
+   VIO_Volume data;
+   VIO_Volume *vol_ptr = NULL;
    int      c, in_ndims;
    int      n_outfiles;
    VIO_Real     min, max;
@@ -277,8 +275,7 @@ int main(int argc, char *argv[])
    return (status);
    }
 
-void print_version_info(void)
-{
+void print_version_info(void){
    fprintf(stdout, "%s version %s\n", PACKAGE_NAME, PACKAGE_VERSION);
    fprintf(stdout, "Comments to %s\n", PACKAGE_BUGREPORT);
    fprintf(stdout, "\n");
