@@ -21,6 +21,7 @@
 
 
 #include <float.h>
+#include <volume_io.h>
 #include <ParseArgv.h>
 #include <time_stamp.h>
 #include "fft_support.h"
@@ -40,14 +41,14 @@ char *out_names[MAX_OUTFILES] = {
    "power    "
 };
 
-int      verbose = FALSE;
-int      clobber = FALSE;
-int      inv_fft = FALSE;
-int      centre_fft = FALSE;
-int      fft_dim = 3;
-char    *outfiles[MAX_OUTFILES] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
-int      is_signed = FALSE;
-nc_type  dtype = NC_FLOAT;
+int verbose = FALSE;
+int clobber = FALSE;
+int inv_fft = FALSE;
+int centre_fft = FALSE;
+int fft_dim = 3;
+char *outfiles[MAX_OUTFILES] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
+int is_signed = FALSE;
+nc_type dtype = NC_FLOAT;
 
 static ArgvInfo argTable[] = {
    {NULL, ARGV_HELP, (char *)NULL, (char *)NULL,
@@ -119,10 +120,11 @@ int main(int argc, char *argv[]){
    VIO_Volume tmp;
    VIO_Volume data;
    VIO_Volume *vol_ptr = NULL;
-   int      c, in_ndims;
-   int      n_outfiles;
-   VIO_Real     min, max;
-
+   int c;
+   int in_ndims;
+   int n_outfiles;
+   VIO_Real min;
+   VIO_Real max;
    minc_input_options in_ops;
 
    /* get the history string */
@@ -184,7 +186,7 @@ int main(int argc, char *argv[]){
       }
 
    if(verbose){
-      VIO_Real     min_value, max_value;
+      VIO_Real min_value, max_value;
 
       get_volume_real_range(data, &min_value, &max_value);
 
@@ -195,7 +197,7 @@ int main(int argc, char *argv[]){
       for(c = 0; c < MAX_OUTFILES; c++){
          if(outfiles[c] != NULL){
             fprintf(stdout, " |   [%d]:         %s => %s\n", c, out_names[c],
-                    outfiles[c]);
+               outfiles[c]);
             }
          }
       fprintf(stdout, " | FFT order:      %d\n", fft_dim);
@@ -218,9 +220,9 @@ int main(int argc, char *argv[]){
          /* do the projection if neccesarry */
          tmp = NULL;
          if(c == OUTPUT_REAL_AND_IMAG){
-            VIO_Real     value;
-            int      i, j, k, l;
-            int      sizes[4];
+            VIO_Real value;
+            int i, j, k, l;
+            int sizes[4];
 
             get_volume_sizes(data, sizes);
 
