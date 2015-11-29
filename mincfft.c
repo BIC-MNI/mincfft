@@ -39,7 +39,7 @@ char *out_names[MAX_OUTFILES] = {
    "mag10    ",
    "phase    ",
    "power    "
-};
+   };
 
 int verbose = FALSE;
 int clobber = FALSE;
