@@ -242,8 +242,14 @@ VIO_Status fft_volume_1d(VIO_Volume data, int inverse_flg, int centre){
 
    initialize_progress_report(&progress, FALSE, sizes[0], "FFT");
 
-   /* set up tmp data store */
+   /* set up fftw data store */
    fftw_data = (fftw_complex *) malloc(sizes[2] * sizeof(fftw_complex));
+
+   /* setup an FFT plan */
+   p = fftw_plan_dft_1d(sizes[2],
+      fftw_data, fftw_data,
+      (inverse_flg) ? FFTW_BACKWARD : FFTW_FORWARD,
+      FFTW_MEASURE);
 
    /* for each slice */
    for(i = sizes[0]; i--;){
@@ -267,17 +273,11 @@ VIO_Status fft_volume_1d(VIO_Volume data, int inverse_flg, int centre){
             fftw_data_ptr++;
             }
 
-         /* do the FFT */
-         p = fftw_plan_dft_1d(sizes[2],
-            fftw_data, fftw_data,
-            (inverse_flg) ? FFTW_BACKWARD : FFTW_FORWARD,
-            FFTW_ESTIMATE);
-
+         /* do the FFT using the existing plan */
          fftw_execute(p);
 
          /* put the data back */
          divisor = (inverse_flg) ? sizes[2] : 1.0;
-
          fftw_data_ptr = fftw_data;
          for(k = sizes[2]; k--;){
             SET_VOXEL_4D(data, i, j, k, 0, (VIO_Real) c_re(*fftw_data_ptr) / divisor);
@@ -326,6 +326,12 @@ VIO_Status fft_volume_2d(VIO_Volume data, int inverse_flg, int centre)
    /* set up tmp data store */
    fftw_data = (fftw_complex *) malloc(sizes[1] * sizes[2] * sizeof(fftw_complex));
 
+   /* setup an FFT plan */
+   p = fftw_plan_dft_2d(sizes[1], sizes[2],
+      fftw_data, fftw_data,
+      (inverse_flg) ? FFTW_BACKWARD : FFTW_FORWARD,
+      FFTW_MEASURE);
+
    /* for each slice */
    for(i = sizes[0]; i--;){
 
@@ -348,12 +354,7 @@ VIO_Status fft_volume_2d(VIO_Volume data, int inverse_flg, int centre)
             }
          }
 
-      /* do the FFT */
-      p = fftw_plan_dft_2d(sizes[1], sizes[2],
-                          fftw_data, fftw_data,
-                          (inverse_flg) ? FFTW_BACKWARD : FFTW_FORWARD,
-                          FFTW_ESTIMATE);
-
+      /* do the FFT using the existing plan */
       fftw_execute(p);
 
       /* put the data back */
