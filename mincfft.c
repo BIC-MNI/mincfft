@@ -27,10 +27,11 @@
 #include "fft_support.h"
 
 /* function prototypes */
-void print_version_info(void);
+static void print_version_info(void);
+static int get_axis_order(char *dst, char *key, char *nextArg);
 
 /* hack for pretty-printing */
-char *out_names[MAX_OUTFILES] = {
+static char *out_names[MAX_OUTFILES] = {
    "real+imag",
    "real     ",
    "imag     ",
@@ -41,14 +42,15 @@ char *out_names[MAX_OUTFILES] = {
    "power    "
    };
 
-int verbose = FALSE;
-int clobber = FALSE;
-int inv_fft = FALSE;
-int centre_fft = FALSE;
-int fft_dim = 3;
-char *outfiles[MAX_OUTFILES] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
-int is_signed = FALSE;
-nc_type dtype = NC_FLOAT;
+static int verbose = FALSE;
+static int clobber = FALSE;
+static int inv_fft = FALSE;
+static int centre_fft = FALSE;
+static int fft_dim = 3;
+static char *outfiles[MAX_OUTFILES] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
+static int is_signed = FALSE;
+static nc_type dtype = NC_FLOAT;
+static char *axis_order[MAX_VAR_DIMS+1] = { NULL, NULL, NULL, NULL, NULL, NULL };
 
 static ArgvInfo argTable[] = {
    {NULL, ARGV_HELP, (char *)NULL, (char *)NULL,
@@ -75,6 +77,10 @@ static ArgvInfo argTable[] = {
     "Write signed integer data."},
    {"-unsigned", ARGV_CONSTANT, (char *)FALSE, (char *)&is_signed,
     "Write unsigned integer data."},
+
+   {NULL, ARGV_HELP, NULL, NULL, "Axis order"},
+   {"-dimorder", ARGV_FUNC, (char *) get_axis_order, (char *) axis_order,
+    "Specify dimension order (<dim1>,<dim2>,...) [Default: zspace,yspace,xspace]"},
 
    {NULL, ARGV_HELP, NULL, NULL, "\nFFT options"},
    {"-1D", ARGV_CONSTANT, (char *)1, (char *)&fft_dim,
@@ -287,3 +293,69 @@ void print_version_info(void){
    fprintf(stdout, "\n");
    exit(EXIT_SUCCESS);
    }
+
+
+/* ----------------------------- MNI Header -----------------------------------
+@NAME       : get_axis_order
+@INPUT      : dst - Pointer to client data from argument table
+              key - argument key
+              nextArg - argument following key
+@OUTPUT     : (nothing)
+@RETURNS    : TRUE or FALSE (so that ParseArgv will discard nextArg only
+              when needed)
+@DESCRIPTION: Routine called by ParseArgv to set the axis order
+---------------------------------------------------------------------------- */
+static int get_axis_order(char *dst, char *key, char *nextArg){
+   char **axis_order;
+   char *cur;
+   int ndims;
+
+   /* Get pointer to client data */
+   axis_order = (char **) dst;
+
+   /* Make sure that we have a "-dimorder" argument */
+   if (strcmp(key, "-dimorder") != 0) {
+      (void) fprintf(stderr,
+                     "Unrecognized option \"%s\": internal program error.\n",
+                     key);
+      exit(EXIT_FAILURE);
+   }
+
+   /* Check for next argument */
+   if (nextArg == NULL) {
+      (void) fprintf(stderr,
+                     "\"%s\" option requires an additional argument\n",
+                     key);
+      exit(EXIT_FAILURE);
+   }
+
+   /* Set up pointers to end of string and first non-space character */
+   cur = nextArg;
+   while (ISSPACE(*cur)) cur++;
+   ndims = 0;
+
+   /* Loop through string looking for space or comma-separated names */
+   while ((ndims < MAX_VAR_DIMS) && (*cur!='\0')) {
+
+      /* Get string */
+      axis_order[ndims] = cur;
+
+      /* Search for end of dimension name */
+      while (!ISSPACE(*cur) && (*cur != ARG_SEPARATOR) &&
+             (*cur != '\0')) cur++;
+      if (*cur != '\0') {
+         *cur = '\0';
+         cur++;
+      }
+      ndims++;
+
+      /* Skip any spaces */
+      while (ISSPACE(*cur)) cur++;
+
+   }
+
+   /* Terminate list with NULL */
+   axis_order[ndims] = NULL;
+
+   return TRUE;
+}
