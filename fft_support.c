@@ -63,7 +63,6 @@ VIO_Status prep_volume(VIO_Volume *in_vol, VIO_Volume *out_vol, char *frequency_
             set_volume_real_value(*out_vol, i, j, k, 1, 0, 0.0);  /* imag */
             }
          }
-      update_progress_report(&progress, i + 1);
       }
 
    /* be tidy */
@@ -73,7 +72,8 @@ VIO_Status prep_volume(VIO_Volume *in_vol, VIO_Volume *out_vol, char *frequency_
    }
 
 /* do projections from FFT'd data */
-VIO_Status proj_volume(VIO_Volume *in_vol, VIO_Volume *out_vol, char *spatial_dimorder[], int job){
+VIO_Status proj_volume(VIO_Volume *in_vol, VIO_Volume *out_vol, nc_type dtype, char *spatial_dimorder[], int job){
+
    int i, j, k;
    VIO_Real value, real, imag;
    VIO_Real min, max;
@@ -88,7 +88,7 @@ VIO_Status proj_volume(VIO_Volume *in_vol, VIO_Volume *out_vol, char *spatial_di
    get_volume_separations(*in_vol, separations);
 
    /* define new out_vol VIO_Volume  */
-   *out_vol = create_volume(3, spatial_dimorder, NC_FLOAT, TRUE, 0.0, 0.0);
+   *out_vol = create_volume(3, spatial_dimorder, dtype, TRUE, 0.0, 0.0);
    set_volume_sizes(*out_vol, sizes);
    set_volume_starts(*out_vol, starts);
    set_volume_separations(*out_vol, separations);

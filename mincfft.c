@@ -304,7 +304,7 @@ int main(int argc, char *argv[]){
             vol_ptr = &data;
             }
          else{
-            status = proj_volume(&data, &tmp, o_spatial_dimorder, c);
+            status = proj_volume(&data, &tmp, dtype, o_spatial_dimorder, c);
             vol_ptr = &tmp;
             }
 

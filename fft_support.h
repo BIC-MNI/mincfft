@@ -18,7 +18,7 @@
 #define   OUTPUT_POWER           7
 
 VIO_Status prep_volume(VIO_Volume *in_vol, VIO_Volume *out_vol, char *frequency_dimorder[]);
-VIO_Status proj_volume(VIO_Volume *in_vol, VIO_Volume *out_vol, char *spatial_dimorder[], int job);
+VIO_Status proj_volume(VIO_Volume *in_vol, VIO_Volume *out_vol, nc_type dtype, char *spatial_dimorder[], int job);
 VIO_Status fft_volume(VIO_Volume data, int inverse_flg, int dim, int centre);
 
 
