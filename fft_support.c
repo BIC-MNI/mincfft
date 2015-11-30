@@ -15,12 +15,8 @@ VIO_Status fft_volume_1d(VIO_Volume data, int inverse_flg, int centre);
 VIO_Status fft_volume_2d(VIO_Volume data, int inverse_flg, int centre);
 VIO_Status fft_volume_3d(VIO_Volume data, int inverse_flg, int centre);
 
-extern char *spac_dimorder[];
-extern char *freq_dimorder[];
-extern int centre_fft;
-
-VIO_Status prep_volume(VIO_Volume * in_vol, VIO_Volume * out_vol)
-{
+/* prepare a volume for FFT */
+VIO_Status prep_volume(VIO_Volume *in_vol, VIO_Volume *out_vol, char *frequency_dimorder[]){
    int      i, j, k;
    VIO_Real     value;
    VIO_progress_struct progress;
@@ -42,7 +38,7 @@ VIO_Status prep_volume(VIO_Volume * in_vol, VIO_Volume * out_vol)
    separations[3] = 1;
 
    /* define new out_vol VIO_Volume  */
-   *out_vol = create_volume(4, freq_dimorder, NC_FLOAT, TRUE, 0.0, 0.0);
+   *out_vol = create_volume(4, frequency_dimorder, NC_FLOAT, TRUE, 0.0, 0.0);
    set_volume_sizes(*out_vol, sizes);
    set_volume_starts(*out_vol, starts);
    set_volume_separations(*out_vol, separations);
@@ -76,23 +72,23 @@ VIO_Status prep_volume(VIO_Volume * in_vol, VIO_Volume * out_vol)
    return (VIO_OK);
    }
 
-VIO_Status proj_volume(VIO_Volume * in_vol, VIO_Volume * out_vol, int job)
-{
-   int      i, j, k;
-   VIO_Real     value, real, imag;
-   VIO_Real     min, max;
+/* do projections from FFT'd data */
+VIO_Status proj_volume(VIO_Volume *in_vol, VIO_Volume *out_vol, char *spatial_dimorder[], int job){
+   int i, j, k;
+   VIO_Real value, real, imag;
+   VIO_Real min, max;
 
-   int      sizes[4];
-   VIO_Real     starts[4];
-   VIO_Real     separations[4];
-   VIO_Real     tmp_dircos[4];
+   int sizes[4];
+   VIO_Real starts[4];
+   VIO_Real separations[4];
+   VIO_Real tmp_dircos[4];
 
    get_volume_sizes(*in_vol, sizes);
    get_volume_starts(*in_vol, starts);
    get_volume_separations(*in_vol, separations);
 
    /* define new out_vol VIO_Volume  */
-   *out_vol = create_volume(3, spac_dimorder, NC_FLOAT, TRUE, 0.0, 0.0);
+   *out_vol = create_volume(3, spatial_dimorder, NC_FLOAT, TRUE, 0.0, 0.0);
    set_volume_sizes(*out_vol, sizes);
    set_volume_starts(*out_vol, starts);
    set_volume_separations(*out_vol, separations);
@@ -182,8 +178,7 @@ VIO_Status proj_volume(VIO_Volume * in_vol, VIO_Volume * out_vol, int job)
               inverse_flg = TRUE if inverse fft to be done.
 @RETURNS    : status variable - OK or ERROR.
  */
-VIO_Status fft_volume(VIO_Volume data, int inverse_flg, int dim, int centre)
-{
+VIO_Status fft_volume(VIO_Volume data, int inverse_flg, int dim, int centre){
 /* From the fftw FAQ                                                            */
 /* 3.5 How can I make FFTW put the origin at the center of its output?          */
 /*                                                                              */
@@ -193,7 +188,7 @@ VIO_Status fft_volume(VIO_Volume data, int inverse_flg, int dim, int centre)
 /* array are even, you can accomplish this by simply multiplying each element   */
 /* of the input array by (-1)^(i + j + ...)                                     */
 
-   VIO_Status   status;
+   VIO_Status status;
 
    switch (dim){
    case 1:

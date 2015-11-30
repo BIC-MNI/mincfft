@@ -24,11 +24,15 @@
 #include <volume_io.h>
 #include <ParseArgv.h>
 #include <time_stamp.h>
+#include <ctype.h>
 #include "fft_support.h"
+
+#define ISSPACE(ch) (isspace((int)ch))
+#define ARG_SEPARATOR ','
 
 /* function prototypes */
 static void print_version_info(void);
-static int get_axis_order(char *dst, char *key, char *nextArg);
+static int get_dimorder(char *dst, char *key, char *nextArg);
 
 /* hack for pretty-printing */
 static char *out_names[MAX_OUTFILES] = {
@@ -50,7 +54,7 @@ static int fft_dim = 3;
 static char *outfiles[MAX_OUTFILES] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
 static int is_signed = FALSE;
 static nc_type dtype = NC_FLOAT;
-static char *axis_order[MAX_VAR_DIMS+1] = { NULL, NULL, NULL, NULL, NULL, NULL };
+static char *dimorder[MAX_VAR_DIMS+1] = { NULL, NULL, NULL, NULL, NULL, NULL };
 
 static ArgvInfo argTable[] = {
    {NULL, ARGV_HELP, (char *)NULL, (char *)NULL,
@@ -78,9 +82,9 @@ static ArgvInfo argTable[] = {
    {"-unsigned", ARGV_CONSTANT, (char *)FALSE, (char *)&is_signed,
     "Write unsigned integer data."},
 
-   {NULL, ARGV_HELP, NULL, NULL, "Axis order"},
-   {"-dimorder", ARGV_FUNC, (char *) get_axis_order, (char *) axis_order,
-    "Specify dimension order (<dim1>,<dim2>,...) [Default: zspace,yspace,xspace]"},
+   {NULL, ARGV_HELP, NULL, NULL, "\nAxis order"},
+   {"-dimorder", ARGV_FUNC, (char *) get_dimorder, (char *)dimorder,
+    "Specify dimension order (<dim1>,<dim2>,...)\n               [Default: zspace,yspace,xspace]"},
 
    {NULL, ARGV_HELP, NULL, NULL, "\nFFT options"},
    {"-1D", ARGV_CONSTANT, (char *)1, (char *)&fft_dim,
@@ -118,10 +122,10 @@ static ArgvInfo argTable[] = {
 
    {NULL, ARGV_HELP, NULL, NULL, ""},
    {NULL, ARGV_END, NULL, NULL, NULL}
-};
+   };
 
-char *spac_dimorder[] = { MIzspace, MIyspace, MIxspace };
-char *freq_dimorder[] = { MIzspace, MIyspace, MIxspace, MIvector_dimension };
+char *def_spatial_dimorder[] = { MIzspace, MIyspace, MIxspace };
+char *def_frequency_dimorder[] = { MIzspace, MIyspace, MIxspace, MIvector_dimension };
 
 int main(int argc, char *argv[]){
    char *in_fn;
@@ -136,6 +140,8 @@ int main(int argc, char *argv[]){
    VIO_Real min;
    VIO_Real max;
    minc_input_options in_ops;
+   char *spatial_dimorder[3];
+   char *frequency_dimorder[4];
 
    /* get the history string */
    history = time_stamp(argc, argv);
@@ -174,19 +180,40 @@ int main(int argc, char *argv[]){
       exit(EXIT_FAILURE);
       }
 
+   /* setup axis order, assume NULL means the default */
+   if(dimorder[0] == NULL){
+      spatial_dimorder[0] = def_spatial_dimorder[0];
+      spatial_dimorder[1] = def_spatial_dimorder[1];
+      spatial_dimorder[2] = def_spatial_dimorder[2];
+
+      frequency_dimorder[0] = def_frequency_dimorder[0];
+      frequency_dimorder[1] = def_frequency_dimorder[1];
+      frequency_dimorder[2] = def_frequency_dimorder[2];
+      frequency_dimorder[3] = def_frequency_dimorder[3];
+      }
+   else{
+      spatial_dimorder[0] = dimorder[0];
+      spatial_dimorder[1] = dimorder[1];
+      spatial_dimorder[2] = dimorder[2];
+
+      frequency_dimorder[0] = dimorder[0];
+      frequency_dimorder[1] = dimorder[1];
+      frequency_dimorder[2] = dimorder[2];
+      frequency_dimorder[3] = def_frequency_dimorder[3];
+      }
 
    /* read in the input file */
    in_ndims = get_minc_file_n_dimensions(in_fn);
    set_default_minc_input_options(&in_ops);
    set_minc_input_vector_to_scalar_flag(&in_ops, FALSE);
    if(in_ndims == 4){
-      status = input_volume(in_fn, 4, freq_dimorder,
+      status = input_volume(in_fn, 4, frequency_dimorder,
                             NC_UNSPECIFIED, FALSE, 0.0, 0.0, TRUE, &data, &in_ops);
       }
    else{
-      status = input_volume(in_fn, 3, spac_dimorder,
+      status = input_volume(in_fn, 3, spatial_dimorder,
                             NC_UNSPECIFIED, FALSE, 0.0, 0.0, TRUE, &tmp, &in_ops);
-      status &= prep_volume(&tmp, &data);
+      status &= prep_volume(&tmp, &data, frequency_dimorder);
       delete_volume(tmp);
       }
 
@@ -261,7 +288,7 @@ int main(int argc, char *argv[]){
             vol_ptr = &data;
             }
          else{
-            status = proj_volume(&data, &tmp, c);
+            status = proj_volume(&data, &tmp, spatial_dimorder, c);
             vol_ptr = &tmp;
             }
 
@@ -295,50 +322,43 @@ void print_version_info(void){
    }
 
 
-/* ----------------------------- MNI Header -----------------------------------
-@NAME       : get_axis_order
-@INPUT      : dst - Pointer to client data from argument table
-              key - argument key
-              nextArg - argument following key
-@OUTPUT     : (nothing)
-@RETURNS    : TRUE or FALSE (so that ParseArgv will discard nextArg only
-              when needed)
-@DESCRIPTION: Routine called by ParseArgv to set the axis order
----------------------------------------------------------------------------- */
-static int get_axis_order(char *dst, char *key, char *nextArg){
-   char **axis_order;
+/* get dimension order from a ParseArgv string */
+/* directly lifted from mincreshape - Thanks Peter! */
+static int get_dimorder(char *dst, char *key, char *nextArg){
+   char **dimorder;
    char *cur;
    int ndims;
 
    /* Get pointer to client data */
-   axis_order = (char **) dst;
+   dimorder = (char **) dst;
 
    /* Make sure that we have a "-dimorder" argument */
-   if (strcmp(key, "-dimorder") != 0) {
+   if(strcmp(key, "-dimorder") != 0){
       (void) fprintf(stderr,
                      "Unrecognized option \"%s\": internal program error.\n",
                      key);
       exit(EXIT_FAILURE);
-   }
+      }
 
    /* Check for next argument */
-   if (nextArg == NULL) {
+   if(nextArg == NULL){
       (void) fprintf(stderr,
                      "\"%s\" option requires an additional argument\n",
                      key);
       exit(EXIT_FAILURE);
-   }
+      }
 
    /* Set up pointers to end of string and first non-space character */
    cur = nextArg;
-   while (ISSPACE(*cur)) cur++;
+   while(ISSPACE(*cur)){
+      cur++;
+      }
    ndims = 0;
 
    /* Loop through string looking for space or comma-separated names */
    while ((ndims < MAX_VAR_DIMS) && (*cur!='\0')) {
-
       /* Get string */
-      axis_order[ndims] = cur;
+      dimorder[ndims] = cur;
 
       /* Search for end of dimension name */
       while (!ISSPACE(*cur) && (*cur != ARG_SEPARATOR) &&
@@ -346,16 +366,15 @@ static int get_axis_order(char *dst, char *key, char *nextArg){
       if (*cur != '\0') {
          *cur = '\0';
          cur++;
-      }
+         }
       ndims++;
 
       /* Skip any spaces */
       while (ISSPACE(*cur)) cur++;
-
-   }
+      }
 
    /* Terminate list with NULL */
-   axis_order[ndims] = NULL;
+   dimorder[ndims] = NULL;
 
    return TRUE;
-}
+   }
