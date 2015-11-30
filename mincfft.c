@@ -55,6 +55,7 @@ static char *outfiles[MAX_OUTFILES] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL
 static int is_signed = FALSE;
 static nc_type dtype = NC_FLOAT;
 static char *dimorder[MAX_VAR_DIMS+1] = { NULL, NULL, NULL, NULL, NULL, NULL };
+static char *o_dimorder[MAX_VAR_DIMS+1] = { NULL, NULL, NULL, NULL, NULL, NULL };
 
 static ArgvInfo argTable[] = {
    {NULL, ARGV_HELP, (char *)NULL, (char *)NULL,
@@ -82,9 +83,11 @@ static ArgvInfo argTable[] = {
    {"-unsigned", ARGV_CONSTANT, (char *)FALSE, (char *)&is_signed,
     "Write unsigned integer data."},
 
-   {NULL, ARGV_HELP, NULL, NULL, "\nAxis order"},
+   {NULL, ARGV_HELP, NULL, NULL, "\nDimension order"},
    {"-dimorder", ARGV_FUNC, (char *) get_dimorder, (char *)dimorder,
     "Specify dimension order (<dim1>,<dim2>,...)\n               [Default: zspace,yspace,xspace]"},
+   {"-o_dimorder", ARGV_FUNC, (char *) get_dimorder, (char *)o_dimorder,
+    "Specify the output dimension order. THIS IS DIRTY! use at own risk\n"},
 
    {NULL, ARGV_HELP, NULL, NULL, "\nFFT options"},
    {"-1D", ARGV_CONSTANT, (char *)1, (char *)&fft_dim,
@@ -141,6 +144,7 @@ int main(int argc, char *argv[]){
    VIO_Real max;
    minc_input_options in_ops;
    char *spatial_dimorder[3];
+   char *o_spatial_dimorder[3];
    char *frequency_dimorder[4];
 
    /* get the history string */
@@ -180,7 +184,7 @@ int main(int argc, char *argv[]){
       exit(EXIT_FAILURE);
       }
 
-   /* setup axis order, assume NULL means the default */
+   /* setup input dimension order, assume NULL means the default */
    if(dimorder[0] == NULL){
       spatial_dimorder[0] = def_spatial_dimorder[0];
       spatial_dimorder[1] = def_spatial_dimorder[1];
@@ -200,6 +204,18 @@ int main(int argc, char *argv[]){
       frequency_dimorder[1] = dimorder[1];
       frequency_dimorder[2] = dimorder[2];
       frequency_dimorder[3] = def_frequency_dimorder[3];
+   }
+
+   /* setup output dimension order, assume NULL means the default */
+   if(o_dimorder[0] == NULL){
+      o_spatial_dimorder[0] = spatial_dimorder[0];
+      o_spatial_dimorder[1] = spatial_dimorder[1];
+      o_spatial_dimorder[2] = spatial_dimorder[2];
+      }
+   else{
+      o_spatial_dimorder[0] = o_dimorder[0];
+      o_spatial_dimorder[1] = o_dimorder[1];
+      o_spatial_dimorder[2] = o_dimorder[2];
       }
 
    /* read in the input file */
@@ -288,7 +304,7 @@ int main(int argc, char *argv[]){
             vol_ptr = &data;
             }
          else{
-            status = proj_volume(&data, &tmp, spatial_dimorder, c);
+            status = proj_volume(&data, &tmp, o_spatial_dimorder, c);
             vol_ptr = &tmp;
             }
 
@@ -333,7 +349,7 @@ static int get_dimorder(char *dst, char *key, char *nextArg){
    dimorder = (char **) dst;
 
    /* Make sure that we have a "-dimorder" argument */
-   if(strcmp(key, "-dimorder") != 0){
+   if(!(strcmp(key, "-dimorder") == 0 || strcmp(key, "-o_dimorder") == 0)){
       (void) fprintf(stderr,
                      "Unrecognized option \"%s\": internal program error.\n",
                      key);
