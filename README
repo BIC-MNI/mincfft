@@ -1,1 +1,36 @@
-This is mincfft
+This is mincfft it uses FFTW to do all the heavy lifting
+
+Comments and changes to: a.janke@gmail.com
+
+A simple example would be as such for a 3D FFT of a 3D minc volume
+
+   mincfft -3D in.mnc out.mnc
+
+In this case out.mnc would be a 4D minc file with a vector_dimension for
+real + imaginary. Most people would instead want a magnitude or phase image.
+Do this as such:
+
+   mincfft -3D in.mnc out.mnc -phase phase.mnc -magnitude mag.mnc
+
+This will result in two additional 3D minc files, phase.mnc and mag.mnc
+
+You can also do 2D and 1D FFT's:
+
+   mincfft -2D in.mnc out.mnc -magnitude mag.mnc
+   mincfft -1D in.mnc out.mnc -magnitude mag.mnc
+
+Note that the dimensions that FFT'd are the fastest varying, so a typical ZYX
+ordered volume a 2D FFT will perform a 2D FFT of the X+Y dimensions for each
+Z slice in a volume. A 1D FFT will perform a 1D FFT of each X column in a ZYX
+volume.
+
+If you want to FFT any other dimension you will need to use the -dimorder
+argument. So in order to perform a 2D FFT of the Z+X dimensions for each Y slice
+do this:
+
+   mincfft -2D -dimorder yspace,xspace,zspace in.mnc out.mnc -magnitude mag.mnc
+
+Note that the resulting volumes will have the dimension order as specfied when
+the FFT is performed. If you would like to reorder the output MINC volume in
+a different order to the FFT you will need to use mincreshape -dimorder ...
+after mincfft.
