@@ -129,17 +129,11 @@ VIO_Status proj_volume(VIO_Volume *in_vol, VIO_Volume *out_vol, nc_type dtype, c
                break;
 
             case OUTPUT_MAGLN:
-               if(value > 0.1)
-                  value = log(sqrt(real * real + imag * imag));
-               else
-                  value = -2.3;
+               value = log(sqrt(real * real + imag * imag) + DBL_EPSILON);
                break;
 
             case OUTPUT_MAG10:
-               if(value > 0.1)
-                  value = log10(sqrt(real * real + imag * imag));
-               else
-                  value = -1;
+               value = log10(sqrt(real * real + imag * imag) + DBL_EPSILON);
                break;
 
             case OUTPUT_POWER:
